@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Color Tetris Clone</title>
+  <style>
+    canvas {
+      border: 2px solid #333;
+      background-color: #111;
+      display: block;
+      margin: 0 auto;
+    }
+    body {
+      background: #222;
+      color: white;
+      font-family: sans-serif;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Color Tetris Clone</h1>
+  <canvas id="gameCanvas" width="240" height="480"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const COLS = 10;
+    const ROWS = 20;
+    const BLOCK_SIZE = 24;
+
+    const COLORS = ["red", "blue", "green", "yellow", "purple", "orange"];
+
+    const SHAPES = {
+      I: [[1, 1, 1, 1]],
+      O: [[1, 1], [1, 1]],
+      L: [[1, 0], [1, 0], [1, 1]],
+      Z: [[1, 1, 0], [0, 1, 1]],
+      CUSTOM: [[1, 1, 1], [0, 1, 0]]
+    };
+
+    let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+
+    let currentPiece = null;
+
+    function drawGrid() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (grid[r][c]) {
+          ctx.fillStyle = grid[r][c];
+          ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+          ctx.strokeStyle = "#111";
+          ctx.strokeRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+        }
+      }
+    }
+    if (currentPiece) {
+      drawPiece();
+    }
+  }
+
+    function drawPiece() {
+      if (!currentPiece) return;
+      const { shape, color, x, y } = currentPiece;
+      for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+          if (shape[r][c]) {
+            ctx.fillStyle = color;
+            ctx.fillRect((x + c) * BLOCK_SIZE, (y + r) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            ctx.strokeStyle = "#111";
+            ctx.strokeRect((x + c) * BLOCK_SIZE, (y + r) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+          }
+        }
+      }
+    }
+
+    function spawnBlock() {
+      const keys = Object.keys(SHAPES);
+      const shapeKey = keys[Math.floor(Math.random() * keys.length)];
+      const shape = SHAPES[shapeKey];
+      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+      currentPiece = {
+        shape,
+        color,
+        x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2),
+        y: 0
+      };
+    }
+
+    function isValidMove(shape, x, y) {
+      for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+          if (shape[r][c]) {
+            const newX = x + c;
+            const newY = y + r;
+            if (
+              newX < 0 || newX >= COLS ||
+              newY >= ROWS ||
+              (newY >= 0 && grid[newY][newX])
+            ) {
+              return false;
+            }
+          }
+        }
+      }
+      return true;
+    }
+
+    function clearLines() {
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (grid[r].every(cell => cell !== null)) {
+          grid.splice(r, 1);
+          grid.unshift(Array(COLS).fill(null));
+          r++; // recheck this row after shifting
+        }
+      }
+    }
+
+    function placePiece() {
+      const { shape, color, x, y } = currentPiece;
+      for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+          if (shape[r][c]) {
+            const newX = x + c;
+            const newY = y + r;
+            if (newY >= 0) {
+              grid[newY][newX] = color;
+            }
+          }
+        }
+      }
+      currentPiece = null;
+      clearLines();
+      spawnBlock();
+    }
+
+    function rotate(shape) {
+      return shape[0].map((_, i) => shape.map(row => row[i]).reverse());
+    }
+
+    function update() {
+      if (!currentPiece) {
+        spawnBlock();
+      } else {
+        if (isValidMove(currentPiece.shape, currentPiece.x, currentPiece.y + 1)) {
+          currentPiece.y++;
+        } else {
+          placePiece();
+        }
+      }
+      drawGrid();
+    }
+
+    setInterval(update, 500);
+
+    window.addEventListener("keydown", (e) => {
+      if (!currentPiece) return;
+      if (e.key === "ArrowLeft" && isValidMove(currentPiece.shape, currentPiece.x - 1, currentPiece.y)) {
+        currentPiece.x--;
+      } else if (e.key === "ArrowRight" && isValidMove(currentPiece.shape, currentPiece.x + 1, currentPiece.y)) {
+        currentPiece.x++;
+      } else if (e.key === "ArrowDown" && isValidMove(currentPiece.shape, currentPiece.x, currentPiece.y + 1)) {
+        currentPiece.y++;
+      } else if (e.key === "ArrowUp") {
+          const rotated = rotate(currentPiece.shape);
+          if (isValidMove(rotated, currentPiece.x, currentPiece.y)) {
+            currentPiece.shape = rotated;
+          }
+      }
+      drawGrid();
+    });
+
+    drawGrid();
+  </script>
+</body>
+</html>
